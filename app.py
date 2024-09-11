@@ -12,7 +12,7 @@ css_file_path = os.path.join(current_dir, 'css', 'bootstrap.min.css')  # Пут�
 
 class MyServer(BaseHTTPRequestHandler):
     """
-        Класс, обрабатывающий запросы к серверу.
+        Класс, обрабатывающий запросы к серверу..
     """
 
     def do_GET(self):
