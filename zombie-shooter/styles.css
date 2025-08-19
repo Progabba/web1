@@ -1,0 +1,18 @@
+/* Минимальный стиль для полноэкранного canvas */
+html, body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: #0d1017;
+  color: #e6edf3;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+}
+
+canvas#game {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  cursor: crosshair;
+}
