@@ -9,7 +9,31 @@
   </head>
   <body>
     <noscript>Для запуска игры нужен включённый JavaScript.</noscript>
+    
+    <!-- Модальное окно ввода имени -->
+    <div id="nameModal" class="modal">
+      <div class="modal-content">
+        <h2>Введите ваше имя</h2>
+        <input type="text" id="playerNameInput" placeholder="Ваше имя" maxlength="20">
+        <button id="startGameBtn">Начать игру</button>
+      </div>
+    </div>
+
+    <!-- Модальное окно рейтинга -->
+    <div id="leaderboardModal" class="modal" style="display: none;">
+      <div class="modal-content">
+        <h2>🏆 Рейтинг игроков</h2>
+        <div id="leaderboardList"></div>
+        <button id="playAgainBtn">Играть снова</button>
+      </div>
+    </div>
+
     <canvas id="game" aria-label="Игровое поле"></canvas>
+    
+    <!-- Кнопка управления музыкой -->
+    <button id="musicToggle" class="music-toggle">🎵</button>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
     <script defer src="./src/main.js"></script>
   </body>
   </html>

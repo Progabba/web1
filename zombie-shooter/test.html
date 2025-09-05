@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Тест музыки и БД</title>
+    <style>
+        body {
+            background: #0d1017;
+            color: #e6edf3;
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        button {
+            background: #4cc9f0;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            margin: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #3a86ff;
+        }
+        #output {
+            background: #1a1a1a;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            min-height: 100px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Тест музыки и базы данных</h1>
+    
+    <button onclick="testMusic()">Тест музыки</button>
+    <button onclick="testDatabase()">Тест базы данных</button>
+    <button onclick="clearData()">Очистить данные</button>
+    
+    <div id="output"></div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
+    <script>
+        // Простая система звуков для тестирования
+        class TestSoundManager {
+            constructor() {
+                this.audioContext = null;
+                this.initAudio();
+            }
+            
+            initAudio() {
+                try {
+                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    console.log("Аудио система инициализирована");
+                } catch (e) {
+                    console.log("Web Audio API не поддерживается");
+                }
+            }
+            
+            async activateAudio() {
+                if (this.audioContext && this.audioContext.state === 'suspended') {
+                    await this.audioContext.resume();
+                    console.log("Аудио контекст активирован");
+                }
+            }
+            
+            playSound(frequency, duration, type = 'sine', volume = 0.1) {
+                if (!this.audioContext) return;
+                
+                const oscillator = this.audioContext.createOscillator();
+                const gainNode = this.audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(this.audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
+                oscillator.type = type;
+                
+                gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
+                gainNode.gain.linearRampToValueAtTime(volume, this.audioContext.currentTime + 0.01);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + duration);
+                
+                oscillator.start(this.audioContext.currentTime);
+                oscillator.stop(this.audioContext.currentTime + duration);
+            }
+        }
+        
+        const soundManager = new TestSoundManager();
+        
+        // Простая система базы данных для тестирования
+        class TestDatabaseManager {
+            constructor() {
+                this.db = null;
+                this.initDatabase();
+            }
+            
+            async initDatabase() {
+                try {
+                    if (typeof initSqlJs !== 'undefined') {
+                        const SQL = await initSqlJs({
+                            locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}`
+                        });
+                        
+                        this.db = new SQL.Database();
+                        
+                        this.db.run(`
+                            CREATE TABLE IF NOT EXISTS leaderboard (
+                                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                name TEXT NOT NULL,
+                                score INTEGER NOT NULL,
+                                level INTEGER NOT NULL,
+                                date TEXT NOT NULL
+                            )
+                        `);
+                        
+                        console.log("SQLite база данных инициализирована");
+                    } else {
+                        console.log("SQL.js не загружен, используем localStorage");
+                    }
+                } catch (error) {
+                    console.error("Ошибка инициализации базы данных:", error);
+                }
+            }
+            
+            saveScore(playerName, score, level) {
+                const date = new Date().toISOString();
+                const newScore = { name: playerName, score, level, date };
+                
+                try {
+                    if (this.db) {
+                        this.db.run(
+                            "INSERT INTO leaderboard (name, score, level, date) VALUES (?, ?, ?, ?)",
+                            [playerName, score, level, date]
+                        );
+                    }
+                } catch (error) {
+                    console.error("Ошибка сохранения в SQLite:", error);
+                }
+                
+                // Сохраняем в localStorage
+                const scores = this.getTopScores(10);
+                scores.push(newScore);
+                scores.sort((a, b) => {
+                    if (b.score !== a.score) return b.score - a.score;
+                    return b.level - a.level;
+                });
+                
+                localStorage.setItem('zombieShooterLeaderboard', JSON.stringify(scores.slice(0, 10)));
+                console.log("Очки сохранены:", newScore);
+            }
+            
+            getTopScores(limit = 3) {
+                try {
+                    if (this.db) {
+                        const result = this.db.exec(`
+                            SELECT name, score, level, date 
+                            FROM leaderboard 
+                            ORDER BY score DESC, level DESC 
+                            LIMIT ${limit}
+                        `);
+                        
+                        if (result.length > 0) {
+                            return result[0].values.map(row => ({
+                                name: row[0],
+                                score: row[1],
+                                level: row[2],
+                                date: row[3]
+                            }));
+                        }
+                    }
+                } catch (error) {
+                    console.error("Ошибка получения из SQLite:", error);
+                }
+                
+                const stored = localStorage.getItem('zombieShooterLeaderboard');
+                if (stored) {
+                    return JSON.parse(stored).slice(0, limit);
+                }
+                
+                return [];
+            }
+        }
+        
+        const dbManager = new TestDatabaseManager();
+        
+        function log(message) {
+            const output = document.getElementById('output');
+            output.innerHTML += '<div>' + new Date().toLocaleTimeString() + ': ' + message + '</div>';
+        }
+        
+        async function testMusic() {
+            log("Тестирование музыки...");
+            await soundManager.activateAudio();
+            
+            // Простая мелодия
+            const notes = [
+                {freq: 220, duration: 0.5},
+                {freq: 247, duration: 0.5},
+                {freq: 277, duration: 0.5},
+                {freq: 330, duration: 0.5}
+            ];
+            
+            let currentTime = 0;
+            notes.forEach(note => {
+                setTimeout(() => {
+                    soundManager.playSound(note.freq, note.duration, 'triangle', 0.1);
+                }, currentTime * 1000);
+                currentTime += note.duration;
+            });
+            
+            log("Музыка воспроизведена!");
+        }
+        
+        async function testDatabase() {
+            log("Тестирование базы данных...");
+            
+            // Добавляем тестовые данные
+            dbManager.saveScore("Тестовый игрок 1", 1000, 5);
+            dbManager.saveScore("Тестовый игрок 2", 1500, 7);
+            dbManager.saveScore("Тестовый игрок 3", 800, 4);
+            
+            // Получаем топ-3
+            const scores = dbManager.getTopScores(3);
+            log("Топ-3 игрока:");
+            scores.forEach((score, index) => {
+                log(`${index + 1}. ${score.name} - ${score.score} очков (уровень ${score.level})`);
+            });
+        }
+        
+        function clearData() {
+            localStorage.removeItem('zombieShooterLeaderboard');
+            log("Данные очищены!");
+        }
+        
+        // Инициализация
+        window.addEventListener('load', () => {
+            log("Тестовая страница загружена");
+        });
+    </script>
+</body>
+</html>
